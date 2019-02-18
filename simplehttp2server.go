@@ -13,11 +13,14 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"io"
+	"io/ioutil"
 	"log"
 	"mime"
 	"net"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,9 +51,16 @@ func main() {
 	}
 
 	server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sleep_time := int64(0)
+		sleep_header := r.Header.Get("Sleep-Before-Return")
+		if sleep_header != "" {
+			sleep_time, _ = strconv.ParseInt(sleep_header, 10, 32)
+		}
+		time.Sleep(time.Duration(sleep_time) * time.Second)
 		w.Header().Set("Access-Control-Allow-Origin", *cors)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTION, HEAD, PATCH, PUT, POST, DELETE")
-		log.Printf("Request for %s (Accept-Encoding: %s)", r.URL.Path, r.Header.Get("Accept-Encoding"))
+		io.Copy(ioutil.Discard, r.Body)
+		defer r.Body.Close()
 
 		dir := "."
 		redirected := false
